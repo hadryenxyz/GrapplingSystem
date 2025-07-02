@@ -1,0 +1,45 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GrappleEvent = ReplicatedStorage:WaitForChild("GrappleEvent")
+
+
+GrappleEvent.OnServerEvent:Connect(function(player, targetPos, isSlowed)
+	print("Server received grapple from", player.Name)
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	
+	local prev = root:FindFirstChild("GrappleForce")
+	if prev then prev:Destroy() end
+
+	if not targetPos then return end
+
+	
+	local force = Instance.new("BodyVelocity")
+	force.Name = "GrappleForce"
+	force.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	force.Velocity = Vector3.zero
+	force.P = 4000
+	force.Parent = root
+
+	local connection
+	connection = game:GetService("RunService").Heartbeat:Connect(function()
+		if not char or not root or not force then
+			connection:Disconnect()
+			return
+		end
+
+		local distance = (targetPos - root.Position).Magnitude
+		local direction = (targetPos - root.Position).Unit
+
+		local speed = isSlowed and 45 or 90
+		if distance < 15 then
+			speed *= (distance / 15) 
+		end
+
+		force.Velocity = direction * speed
+		
+	end)
+
+end)
