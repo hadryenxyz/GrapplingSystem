@@ -1,4 +1,4 @@
-```lua
+
 -- Grapple Client Side
 
 
@@ -113,5 +113,4 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.KeyCode == GRAPPLE_KEY then
 		stopGrapple()
 	end
-end)
-```
+end
