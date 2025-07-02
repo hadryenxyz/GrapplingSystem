@@ -1,0 +1,117 @@
+```lua
+-- Grapple Client Side
+
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character, rootPart
+local GrappleEvent = ReplicatedStorage:WaitForChild("GrappleEvent")
+
+local isGrappling = false
+local cooldown = false
+
+local line, att0, att1, ropePart
+local crosshair
+
+local GRAPPLE_KEY = Enum.KeyCode.G
+local COOLDOWN_TIME = 1
+
+
+local function drawRope(targetPos)
+	if line then line:Destroy() end
+	if ropePart then ropePart:Destroy() end
+
+	att0 = Instance.new("Attachment")
+	att1 = Instance.new("Attachment")
+
+	ropePart = Instance.new("Part")
+	ropePart.Anchored = true
+	ropePart.CanCollide = false
+	ropePart.Transparency = 1
+	ropePart.Size = Vector3.new(0.1, 0.1, 0.1)
+	ropePart.Position = targetPos
+	ropePart.Parent = workspace
+
+	att0.Parent = rootPart
+	att1.Parent = ropePart
+
+	line = Instance.new("Beam")
+	line.Attachment0 = att0
+	line.Attachment1 = att1
+	line.Width0 = 0.1
+	line.Width1 = 0.1
+	line.FaceCamera = true
+	line.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	line.Parent = rootPart
+end
+
+local function clearRope()
+	if line then line:Destroy() end
+	if att0 then att0:Destroy() end
+	if att1 and att1.Parent then att1.Parent:Destroy() end
+	line, att0, att1, ropePart = nil, nil, nil, nil
+end
+
+local function startGrapple()
+	if isGrappling or cooldown then return end
+
+	character = player.Character
+	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+	rootPart = character:FindFirstChild("HumanoidRootPart")
+
+	local mouse = player:GetMouse()
+	local origin = workspace.CurrentCamera.CFrame.Position
+	local mousePos = mouse.Hit and mouse.Hit.Position
+
+	if not mousePos then return end
+
+	local direction = (mousePos - origin).Unit * 1000
+
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = {character}
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+	local result = workspace:Raycast(origin, direction, rayParams)
+
+
+	if result then
+		local target = result.Position
+		local isSlowed = CollectionService:HasTag(result.Instance, "slowed")
+
+		isGrappling = true
+		drawRope(target)
+		GrappleEvent:FireServer(target, isSlowed)
+
+		cooldown = true
+		task.delay(COOLDOWN_TIME, function()
+			cooldown = false
+		end)
+	end
+end
+
+local function stopGrapple()
+	if not isGrappling then return end
+	isGrappling = false
+	clearRope()
+	GrappleEvent:FireServer(nil)
+end
+
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == GRAPPLE_KEY then
+		startGrapple()
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.KeyCode == GRAPPLE_KEY then
+		stopGrapple()
+	end
+end)
+```
